@@ -1,0 +1,179 @@
+This is the combination of both 24 & 25. I started this project using the terraform module to create my infrastructure,
+then I encounter an version whn I couldnt get my HELM Elastic search and Artifactory pods to start, so I switched to KOPS.
+KOPS is another way of builing an infrastructure, (Check KOPS-cluster-readme for configuration)
+
+
+
+Jays-MBP:eks Wiped$ helm install my-jenkins jenkins/jenkins --version 4.5.0
+NAME: my-jenkins
+LAST DEPLOYED: Mon Jul 31 01:14:44 2023
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Get your 'admin' user password by running:
+  kubectl exec --namespace default -it svc/my-jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password && echo
+2. Get the Jenkins URL to visit by running these commands in the same shell:
+  echo http://127.0.0.1:8080
+  kubectl --namespace default port-forward svc/my-jenkins 8080:8080
+
+3. Login with the password from step 1 and the username: admin
+4. Configure security realm and authorization strategy
+5. Use Jenkins Configuration as Code by specifying configScripts in your values.yaml file, see documentation: http://127.0.0.1:8080/configuration-as-code and examples: https://github.com/jenkinsci/configuration-as-code-plugin/tree/master/demos
+
+For more information on running Jenkins on Kubernetes, visit:
+https://cloud.google.com/solutions/jenkins-on-container-engine
+
+For more information about Jenkins Configuration as Code, visit:
+https://jenkins.io/projects/jcasc/
+
+#Jenkins password generated 
+
+Jays-MBP:eks Wiped$ kubectl exec --namespace default -it svc/my-jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password && echo
+jqJfsOM2S93dXL8XPFZRfX
+
+## to check the cluster running
+
+kubectl config get-contexts
+
+## practice task
+
+1. prometheus
+
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install my-prometheus prometheus-community/prometheus --version 23.1.0
+
+------------
+2. Hashicorp Vault 
+
+helm repo add hashicorp https://helm.releases.hashicorp.com
+helm install my-vault hashicorp/vault --version 0.25.0
+
+kubectl port-forward pod/my-vault-0 8200:8200
+
+3. Grafana
+
+helm repo add grafana https://grafana.github.io/helm-charts
+helm install my-grafana grafana/grafana --version 6.58.6
+
+kubectl get secret --namespace default my-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+hwqLqnMAKd8jvfelzgvUkVwuelfTokDAG9xzPk2K
+
+export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=grafana,app.kubernetes.io/instance=my-grafana" -o jsonpath="{.items[0].metadata.name}")
+
+kubectl --namespace default port-forward $POD_NAME 3000
+Forwarding from 127.0.0.1:3000 -> 3000
+Forwarding from [::1]:3000 -> 3000
+Handling connection for 3000
+Handling connection for 3000
+
+4. helm repo add jfrog https://charts.jfrog.io
+
+helm install my-artifactory jfrog/artifactory --version 107.33.9
+
+https://helm.sh/docs/topics/version_skew/
+# Access the browser with loadbalacer DNS created in yor aws console
+a4c6cd5ef0a504bdd87f2534c055849a-1202120132.us-east-1.elb.amazonaws.com 
+
+
+
+Self Practice on the last page for changing loadbalacer type to ClusterIP
+
+Using kubectl edit Command:
+
+kubectl edit svc my-artifactory-artifactory-nginx
+
+type: LoadBalancer
+And change it to:
+type: ClusterIP
+
+Using kubectl patch Command:
+
+kubectl patch svc my-artifactory-artifactory-nginx -p '{"spec": {"type": "ClusterIP"}}'
+Helm Update:
+If you deployed the service using Helm, another method is to change the service type in the Helm values file and then update the release. Once you modify the appropriate setting in your values file:
+
+helm upgrade [RELEASE_NAME] [CHART] -f your-values-file.yaml
+Replace [RELEASE_NAME] with the name of your Helm release and [CHART] with the name or path to the chart you used.
+
+
+
+
+#### This is to install cert-manager
+
+Installing Cert-manger for ingress to work to get the certification. The absence of cert-manager pods and CRDs related to cert-manager confirms this. Your ingress configuration uses annotations that are specific to cert-manager, so you won't be able to obtain TLS certificates without it.
+You'll need to install cert-manager to handle certificate issuance within the cluster. Here's a basic set of instructions to get you started:
+
+### Install the CustomResourceDefinitions for cert-manager:
+
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.5.3/cert-manager.crds.yaml
+
+### Add the Jetstack Helm repository:
+
+helm repo add jetstack https://charts.jetstack.io
+
+### 		Update your local Helm chart repositories:helm repo update	
+
+### Install cert-manager with Helm:
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.5.3		
+### Verify the installation:kubectl get pods --namespace cert-manager
+
+
+########### Install the Nginx Ingress Controller:
+
+
+1. Create the Namespace:
+
+kubectl create namespace ingress-nginx
+
+2. Add the ingress-nginx Helm Repository:
+
+If you haven't added the ingress-nginx Helm repository yet, you can add it using:
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+
+
+Now, install the ingress-nginx Helm chart into the ingress-nginx namespace:
+
+helm install nginx-ingress ingress-nginx/ingress-nginx \
+    --namespace ingress-nginx \
+    --set controller.replicaCount=2 \
+    --set controller.nodeSelector."kubernetes\.io/os"=linux \
+    --set defaultBackend.nodeSelector."kubernetes\.io/os"=linux
+
+4. 
+
+Cert-manager
+kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.7.1/cert-manager.crds.yaml
+
+helm install my-cert-manager cert-manager/cert-manager --version 1.7.1
+
+kubectl get crds | grep cert-manager.io
+
+
+########## This is the additional Permission I gave the IAM user(terraform) I used to build my infrastructure
+
+
+Jays-MBP:eks Wiped$ aws iam create-policy --policy-name Route53ModifyPolicy --policy-document file://route53-policy.json
+urllib3/connectionpool.py:1056: InsecureRequestWarning: Unverified HTTPS request is being made to host 'iam.amazonaws.com'. Adding certificate verification is strongly advised. See: https://urllib3.readthedocs.io/en/1.26.x/advanced-usage.html#ssl-warnings
+{
+    "Policy": {
+        "PolicyName": "Route53ModifyPolicy",
+        "PolicyId": "ANPA4PW5S44N2IFH465GB",
+        "Arn": "arn:aws:iam::858384426779:policy/Route53ModifyPolicy",
+        "Path": "/",
+        "DefaultVersionId": "v1",
+        "AttachmentCount": 0,
+        "PermissionsBoundaryUsageCount": 0,
+        "IsAttachable": true,
+        "CreateDate": "2023-08-10T02:35:34+00:00",
+        "UpdateDate": "2023-08-10T02:35:34+00:00"
+    }
+}
+
+aws iam create-policy --policy-name Route53ModifyPolicy --policy-document file://route53-policy.json
+
+aws iam attach-user-policy --policy-arn YOUR_POLICY_ARN --user-name YOUR_IAM_USERNAME
+
+I created a policy file, which I kubectl applied with the 2 commands above to set the policy.
