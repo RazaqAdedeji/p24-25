@@ -1,5 +1,5 @@
 This is the combination of both 24 & 25. I started this project using the terraform module to create my infrastructure,
-then I encounter an version whn I couldnt get my HELM Elastic search and Artifactory pods to start, so I switched to KOPS.
+then I encounter a version issue where I couldnt get my HELM Elastic search and Artifactory pods to start, so I switched to KOPS.
 KOPS is another way of builing an infrastructure, (Check KOPS-cluster-readme for configuration)
 
 
