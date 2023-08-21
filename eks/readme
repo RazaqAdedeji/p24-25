@@ -1,3 +1,7 @@
+https://drive.google.com/drive/folders/11lzFewz1LTy4zGL7_-0lNm4DEc497IGV
+
+https://dareyio.slack.com/files/U03E6CVTPUH/F05LDC2P0H3/video1948376117.mp4
+
 This is the combination of both 24 & 25. I started this project using the terraform module to create my infrastructure,
 then I encounter a version issue where I couldnt get my HELM Elastic search and Artifactory pods to start, so I switched to KOPS.
 KOPS is another way of builing an infrastructure, (Check KOPS-cluster-readme for configuration)
